@@ -12,7 +12,7 @@
 ## Сборка образа
 
 ```
-docker build --tag 1c-bitrix-echange .
+docker build --tag 1c-bitrix-exchange .
 ```
 
 ## Конфигурация
@@ -26,7 +26,7 @@ docker build --tag 1c-bitrix-echange .
 Если файл для импорта находится в `data/offers.xml`, команда выглядит так:
 
 ```
-docker run -e FILE_NAME=offers.xml -e SITE=test.site.ru --env-file .env --dns=10.0.1.1 -it --rm -v $(pwd)/data/offers.xml:/scripts/data/import-file "1c-bitrix-echange:latest"
+docker run -e FILE_NAME=offers.xml -e SITE=test.site.ru --env-file .env --dns=10.0.1.1 -it --rm -v $(pwd)/data/offers.xml:/scripts/data/import-file "1c-bitrix-exchange:latest"
 ```
 
 В этом примере:
