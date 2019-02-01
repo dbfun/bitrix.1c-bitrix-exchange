@@ -1,17 +1,38 @@
 #!/bin/bash
 
-# Кастомный импорт CSV файла
+#
+# Ссылки
+#
 
-FILE="data/import-file"
-COOK="data/cookiefile.txt"
+# скрипт обмена по HTTP
 URI="$SITE/bitrix/admin/1c_exchange.php"
-
+# авторизация
 URI_CHECKAUTH="$URI?type=catalog&mode=checkauth"
+# инициация
 URI_INIT="$URI?type=catalog&mode=init"
+# загрузка файла
 URI_UPLOAD="$URI?type=catalog&mode=file&filename=$FILE_NAME"
-URI_STEP="$URI?type=catalog&mode=import&filename=$FILE_NAME"
 
+# если делается кастомный обмен, то возможно через параметр GET_STEP_MODE=... передать новый тип, и в PHP скрипте обработать этот кейс,
+# используя if(($_GET["..."] == "report")) { /* свой обработчик */ }
+# если ничего не передавать, используется стандартный обмен
+# @see README.md
+# @see snippets/vendor:catalog.import.1c/component.php
+if [ -z "$GET_STEP_MODE" ] ; then
+  GET_STEP_MODE=import
+fi
+
+#
+# Служебные переменные
+#
+
+# Импорт осуществляется из этого файла, который монтируется с хоста
+SRC_FILE="data/import-file"
+# Файл кукисов
+COOK="data/log/cookiefile.txt"
+# Продолжить обработку
 STEP_CONTINUE=1
+# Уровень "молчания" curl: "показывать только ошибки, скрыть прогресс бар"
 CURL_VERBOSITY="-sS"
 
 
@@ -33,7 +54,7 @@ function init {
 
 function upload {
   info "upload file:\t$URI_UPLOAD"
-  curl $CURL_VERBOSITY -c $COOK -b $COOK -X POST --data-binary @- $URI_UPLOAD --user "$AUTH_LOGIN":"$AUTH_PASS" -H "Content-Type: application/octet-stream" -H "Expect:" --trace-ascii data/log/curl-debug.txt < $FILE > data/log/03-file.txt
+  curl $CURL_VERBOSITY -c $COOK -b $COOK -X POST --data-binary @- $URI_UPLOAD --user "$AUTH_LOGIN":"$AUTH_PASS" -H "Content-Type: application/octet-stream" -H "Expect:" --trace-ascii data/log/curl-debug.txt < $SRC_FILE > data/log/03-file.txt
   assert "$?" "0" "File upload fails"
 }
 
@@ -57,17 +78,37 @@ function step {
   fi
 }
 
-function run {
-  info "run steps:\t$URI_STEP"
+# обработка единичного файла
+function process {
+  URI_STEP="$URI?type=catalog&mode=$GET_STEP_MODE&filename=$FILE_NAME"
+  info "process:\t$URI_STEP"
   while [[ $STEP_CONTINUE == "1" ]]; do
     step
   done
   ok "all done"
 }
 
+# обработка всех файлов в архиве
+function processzip {
+  info "process zip:\t$URI_STEP"
+  zipinfo -1 "$SRC_FILE" | while read -d $'\n' PROCESS_FILENAME; do
+    URI_STEP="$URI?type=catalog&mode=$GET_STEP_MODE&filename=$PROCESS_FILENAME"
+    info "process file:\t$PROCESS_FILENAME"
+    STEP_CONTINUE=1
+    while [[ $STEP_CONTINUE == "1" ]]; do
+      step
+    done
+  done
+}
+
 info "Start importing file $FILE_NAME on $SITE"
-cp "$FILE" "data/log/$FILE_NAME"
+cp "$SRC_FILE" "data/log/$FILE_NAME"
 checkauth
 init
 upload
-run
+
+if [ -n "$ZIP" ] && [ "$ZIP" -eq "1" ]; then
+  processzip
+else
+  process
+fi

@@ -70,3 +70,4 @@ docker  run -it --rm \
 `bitrix/components/bitrix/catalog.import.1c/` =>
 `local/components/vendor/catalog.import.1c`
 3. Поправить скопированный файл `component.php`, сниппет с изменениями - в файле `snippets/vendor:catalog.import.1c/component.php`.
+4. Использовать `-e GET_STEP_MODE=custom_mode`, где `custom_mode` - параметр, который будет передан в `$_GET['mode']`
