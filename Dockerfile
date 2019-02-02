@@ -2,9 +2,7 @@ FROM alpine
 
 RUN apk add curl && \
     apk add bash && \
-    apk add zip && \
-    mkdir -p /scripts/data && \
-    mkdir -p /scripts/data/log
+    apk add zip
 
 ADD /scripts /scripts
 WORKDIR /scripts
