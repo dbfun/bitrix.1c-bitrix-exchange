@@ -1,0 +1,78 @@
+#!/bin/bash
+
+#
+# Получение необработанных заказов
+#
+
+#
+# Ссылки
+#
+
+# скрипт обмена по HTTP
+URI="$SITE/bitrix/admin/1c_exchange.php"
+# авторизация
+URI_CHECKAUTH="$URI?type=catalog&mode=checkauth"
+# получение заказов
+URI_GET_ORDERS="$URI?type=sale&mode=query&orderIDfrom=1"
+# завершение операции
+URI_SUCCESS="$URI?type=sale&mode=success"
+
+#
+# Библиотеки
+#
+
+source lib/colors.sh
+source lib/functions.sh
+
+function checkauth {
+  info "checkauth:\t$URI_CHECKAUTH"
+  curl $CURL_VERBOSITY -c "$COOK" "$URI_CHECKAUTH" --user "$AUTH_LOGIN":"$AUTH_PASS" --trace-ascii /var/log/curl-debug.txt > /var/log/01-checkauth.txt
+  assert "$?" "0" "Login fails"
+}
+
+function get {
+  info "get orders:\t$URI_GET_ORDERS"
+  curl $CURL_VERBOSITY -sc "$COOK" "$URI_GET_ORDERS" --user "$AUTH_LOGIN":"$AUTH_PASS" --trace-ascii /var/log/curl-debug.txt > /var/log/02-get-orders.xml
+  assert "$?" "0" "Get orders fails"
+}
+
+function success {
+  info "sending success:\t$URI_SUCCESS"
+  curl $CURL_VERBOSITY -sc "$COOK" "$URI_SUCCESS" --user "$AUTH_LOGIN":"$AUTH_PASS" --trace-ascii /var/log/curl-debug.txt > /var/log/03-success.txt
+  assert "$?" "0" "Sending success fails"
+}
+
+
+function checkenv {
+
+  if [ -z "$SITE" ]; then
+    error "Env parameter not set: SITE"
+    exit 1
+  fi
+
+  if [ -z "$AUTH_LOGIN" ]; then
+    error "Env parameter not set: AUTH_LOGIN"
+    exit 1
+  fi
+
+  if [ -z "$AUTH_PASS" ]; then
+    error "Env parameter not set: AUTH_PASS"
+    exit 1
+  fi
+
+}
+
+info "Start get orders"
+
+checkenv
+
+checkauth
+get
+success
+
+ok "See orders file log/02-get-orders.xml"
+
+# Подтверждение получения заказов работает так (не реализовано):
+# "GET /bitrix/admin/1c_exchange.php?type=sale&mode=checkauth HTTP/1.0" 200 45
+# "GET /bitrix/admin/1c_exchange.php?type=sale&mode=init HTTP/1.0" 200 21
+# "POST /bitrix/admin/1c_exchange.php?type=sale&mode=file&filename=v8_52D8_e12.zip HTTP/1.0" 200 8

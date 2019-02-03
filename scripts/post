@@ -1,0 +1,64 @@
+#!/bin/bash
+
+#
+# Простая отправка данных POST запросом на свой обработчик в Битрикс
+#
+
+#
+# Ссылки
+#
+
+# Абсолютный адрес
+ABS_URI="$SITE$URI"
+
+#
+# Библиотеки
+#
+
+source lib/colors.sh
+source lib/functions.sh
+
+function post {
+  info "post data:\t$ABS_URI"
+  curl $CURL_VERBOSITY --user "$AUTH_LOGIN":"$AUTH_PASS" -i -X POST --data-binary @- -H "Content-Type: $CONTENT_TYPE" "$ABS_URI" --trace-ascii /var/log/curl-debug.txt < "$SRC_FILE" > /var/log/01-response.txt
+  assert "$?" "0" "Post data fails"
+}
+
+function checkenv {
+
+  if [ ! -f "$SRC_FILE" ]; then
+    error "File not exists: $SRC_FILE"
+    error "Use: Docker ... -v /path/to/upload/file.json:/src"
+    exit 1
+  fi
+
+  if [ -z "$SITE" ]; then
+    error "Env parameter not set: SITE"
+    exit 1
+  fi
+
+  if [ -z "$URI" ]; then
+    error "Env parameter not set: URI"
+    exit 1
+  fi
+
+  if [ -z "$AUTH_LOGIN" ]; then
+    error "Env parameter not set: AUTH_LOGIN"
+    exit 1
+  fi
+
+  if [ -z "$AUTH_PASS" ]; then
+    error "Env parameter not set: AUTH_PASS"
+    exit 1
+  fi
+
+  if [ -z "$CONTENT_TYPE" ]; then
+    CONTENT_TYPE="application/json"
+  fi
+
+}
+
+info "Start post data on $SITE"
+checkenv
+post
+ok "all done"
